@@ -36,20 +36,12 @@
             background: rgba(0, 255, 65, 0.1);
             position: absolute;
             animation: scan 4s linear infinite;
+            pointer-events: none;
         }
 
         @keyframes scan {
             0% { top: 0; }
             100% { top: 100%; }
-        }
-
-        .crt-flicker {
-            animation: flicker 0.15s infinite;
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.9; }
-            100% { opacity: 1; }
         }
 
         ::-webkit-scrollbar { width: 4px; }
@@ -77,7 +69,7 @@
         <div class="relative">
             <textarea id="code-input" 
                 class="w-full h-32 bg-black border border-green-900 p-3 text-green-400 focus:outline-none focus:border-green-500 resize-none"
-                placeholder="// PASTE PINE SCRIPT FOR RE-ENGINEERING..."></textarea>
+                placeholder="// PASTE PINE SCRIPT HERE..."></textarea>
             <button id="submit-btn" class="absolute bottom-3 right-3 bg-green-900 hover:bg-green-600 text-black px-4 py-1 font-bold transition-all">
                 SNIPER SHOT
             </button>
@@ -86,25 +78,21 @@
 
     <div id="admin-panel" class="fixed inset-0 bg-black z-[100] hidden flex flex-col p-6">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold underline">SENTINEL_ADMIN_PANEL</h1>
-            <button onclick="toggleAdmin(false)" class="text-red-500">[ EXIT ]</button>
+            <h1 class="text-2xl font-bold underline text-green-500">SENTINEL_ARCHIVE_ACCESS</h1>
+            <button onclick="toggleAdmin(false)" class="text-red-500 border border-red-900 px-4 py-1 hover:bg-red-900 hover:text-white transition-all">[ CLOSE ]</button>
         </div>
         
-        <div id="auth-section" class="flex flex-col items-center justify-center flex-1">
-            <button id="google-login" class="border border-green-500 p-4 hover:bg-green-500 hover:text-black transition-all">
-                AUTHORIZE WITH GOOGLE
-            </button>
-        </div>
-
-        <div id="admin-content" class="hidden flex flex-1 gap-4 overflow-hidden">
-            <div class="w-1/3 border border-green-900 overflow-y-auto" id="submissions-list">
+        <div id="admin-content" class="flex flex-1 gap-4 overflow-hidden">
+            <div class="w-1/3 border border-green-900 overflow-y-auto bg-zinc-900/50" id="submissions-list">
+                <div class="p-4 text-xs opacity-50 italic">SCANNING FOR ARCHIVES...</div>
+            </div>
+            
+            <div class="w-2/3 border border-green-900 flex flex-col p-4 bg-black">
+                <div class="flex justify-between items-center mb-4 border-b border-green-900 pb-2">
+                    <span id="viewing-id" class="text-[10px] text-green-700">SELECT_LOG_TO_PREVIEW</span>
+                    <button id="copy-all-btn" class="text-xs bg-green-600 text-black px-3 py-1 font-bold hidden hover:bg-green-400">COPY_SCRIPT</button>
                 </div>
-            <div class="w-2/3 border border-green-900 flex flex-col p-4 bg-zinc-950">
-                <div class="flex justify-between mb-2">
-                    <span id="viewing-id" class="text-xs opacity-50">NO_LOG_SELECTED</span>
-                    <button id="copy-all-btn" class="text-xs bg-green-700 text-white px-2 py-1 hidden">COPY_ALL</button>
-                </div>
-                <pre id="code-preview" class="text-sm text-green-300 overflow-auto whitespace-pre-wrap"></pre>
+                <pre id="code-preview" class="text-sm text-green-400 overflow-auto whitespace-pre-wrap font-mono"></pre>
             </div>
         </div>
     </div>
@@ -112,9 +100,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyDzpZFAcHEm5Cu2WADM7-yXxqjF26YD6O8",
             authDomain: "qqwin-340e5.firebaseapp.com",
@@ -128,10 +114,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app);
-        const ADMIN_EMAIL = "hemanaruto3044@gmail.com";
 
-        // UI ELEMENTS
         const logContainer = document.getElementById('log-container');
         const codeInput = document.getElementById('code-input');
         const submitBtn = document.getElementById('submit-btn');
@@ -141,10 +124,9 @@
         const codePreview = document.getElementById('code-preview');
         const copyAllBtn = document.getElementById('copy-all-btn');
 
-        // APP LOGIC
+        // Helper: Add log to terminal
         function addLog(msg, type = 'info') {
             const div = document.createElement('div');
-            // FIX: Unique ID using precise timestamp + random sequence
             const uniqueId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
             div.id = `log-${uniqueId}`;
             const color = type === 'error' ? 'text-red-500' : (type === 'success' ? 'text-cyan-400' : 'text-green-600');
@@ -154,93 +136,77 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Handle Submission
+        // Action: Submit Code
         submitBtn.onclick = async () => {
             const code = codeInput.value.trim();
-            if (!code) return addLog("ERROR: EMPTY_BUFFER_REJECTED", "error");
+            if (!code) return addLog("ERROR: EMPTY_BUFFER", "error");
 
-            addLog("UPLOADING SCRIPT TO SENTINAX_CORE...");
+            addLog("UPLOADING SCRIPT...");
             try {
                 await addDoc(collection(db, "submissions"), {
                     code: code,
-                    timestamp: Date.now(),
-                    device: navigator.userAgent
+                    timestamp: Date.now()
                 });
-                addLog("SUCCESS: ENCRYPTED_AND_ARCHIVED", "success");
+                addLog("SUCCESS: ARCHIVED_IN_FIREBASE", "success");
                 codeInput.value = "";
             } catch (e) {
-                addLog(`CRITICAL_FAILURE: ${e.message}`, "error");
+                addLog("CRITICAL: UPLOAD_FAILED", "error");
             }
         };
 
-        // ADMIN PANEL TRIGGER (Triple Tap)
+        // Action: Open Admin (Triple Tap)
         let tapCount = 0;
         cpuLogo.onclick = () => {
             tapCount++;
             if (tapCount >= 3) {
                 adminPanel.classList.remove('hidden');
+                loadSubmissions(); // Load data immediately on open
                 tapCount = 0;
             }
-            setTimeout(() => tapCount = 0, 1000);
+            setTimeout(() => tapCount = 0, 800);
         };
 
         window.toggleAdmin = (show) => {
             if (!show) adminPanel.classList.add('hidden');
         };
 
-        // GOOGLE AUTH
-        document.getElementById('google-login').onclick = async () => {
-            const provider = new GoogleAuthProvider();
-            try {
-                const result = await signInWithPopup(auth, provider);
-                if (result.user.email === ADMIN_EMAIL) {
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('admin-content').classList.remove('hidden');
-                    loadSubmissions();
-                } else {
-                    alert("ACCESS_DENIED: UNAUTHORIZED_ENTITY");
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        };
-
-        // LOAD DATA (Admin Only)
+        // Action: Load and Preview Scripts
         function loadSubmissions() {
             const q = query(collection(db, "submissions"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
                 submissionsList.innerHTML = "";
+                if (snapshot.empty) {
+                    submissionsList.innerHTML = '<div class="p-4 text-xs opacity-50">NO SCRIPTS FOUND</div>';
+                }
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     const btn = document.createElement('div');
-                    btn.className = "p-3 border-b border-green-900 cursor-pointer hover:bg-green-900/20 text-[10px]";
-                    btn.innerHTML = `LOG_${doc.id.substring(0,8)}<br><span class="opacity-50">${new Date(data.timestamp).toLocaleString()}</span>`;
+                    btn.className = "p-3 border-b border-green-900 cursor-pointer hover:bg-green-500 hover:text-black transition-all text-[10px]";
+                    btn.innerHTML = `ENTRY_${doc.id.substring(0,6)}<br><span class="opacity-60">${new Date(data.timestamp).toLocaleString()}</span>`;
+                    
                     btn.onclick = () => {
                         codePreview.innerText = data.code;
                         document.getElementById('viewing-id').innerText = `ID: ${doc.id}`;
                         copyAllBtn.classList.remove('hidden');
                         copyAllBtn.onclick = () => {
                             navigator.clipboard.writeText(data.code);
+                            const originalText = copyAllBtn.innerText;
                             copyAllBtn.innerText = "COPIED!";
-                            setTimeout(() => copyAllBtn.innerText = "COPY_ALL", 2000);
+                            setTimeout(() => copyAllBtn.innerText = originalText, 1500);
                         };
                     };
                     submissionsList.appendChild(btn);
                 });
-            }, (error) => {
-                console.error("Firestore Permission Error:", error);
-                addLog("PERMISSION_DENIED_BY_SENTINEL", "error");
             });
         }
 
-        // Initialize UI
+        // Clock
         setInterval(() => {
-            document.getElementById('clock').innerText = `SYS_TIME: ${new Date().toISOString()}`;
+            document.getElementById('clock').innerText = `SYS_TIME: ${new Date().toLocaleTimeString()}`;
         }, 1000);
 
-        addLog("SENTINAX_OS v3.0.4 BOOTING...");
-        addLog("FIREBASE_HANDSHAKE: OK");
-        addLog("READY_FOR_RE_ENGINEERING");
+        addLog("SYSTEM_INITIALIZED...");
+        addLog("ARCHIVE_LISTENER: ACTIVE");
     </script>
 </body>
 </html>
